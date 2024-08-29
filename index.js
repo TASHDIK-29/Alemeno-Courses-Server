@@ -5,7 +5,12 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 5000;
 
+const corsOptions = {
+    origin: ['http://localhost:5173', 'http://localhost:5174'],
 
+}
+app.use(cors(corsOptions))
+app.use(express.json());
 
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.iepmiic.mongodb.net/${process.env.DB_NAME}?retryWrites=true&w=majority&appName=Cluster0`;
@@ -27,9 +32,29 @@ async function run() {
         const coursesCollection = client.db("Alemeno").collection("courses");
 
         app.get('/allCourse', async (req, res) => {
-            const courses = await coursesCollection.find().toArray();
+            const { search } = req.query;
+
+            let filter = {};
+            if (search) {
+                filter = {
+                    $or: [
+                        { name: { $regex: search, $options: 'i' } },
+                        { instructor: { $regex: search, $options: 'i' } }
+                    ]
+                };
+            }
+
+            const courses = await coursesCollection.find(filter).toArray();
 
             res.send(courses);
+        })
+
+        app.get('/courses/:id', async (req, res) =>{
+            const id = req.params.id;
+
+            const courseDetail = await coursesCollection.findOne({_id: new ObjectId(id)});
+
+            res.send(courseDetail);
         })
 
 
