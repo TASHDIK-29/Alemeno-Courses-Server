@@ -5,6 +5,7 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 5000;
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 const corsOptions = {
     origin: ['http://localhost:5173', 'http://localhost:5174'],
@@ -51,7 +52,7 @@ async function run() {
             const securePassword = await bcrypt.hash(req.body.password, salt)
 
             const userInfo = {
-                
+
                 ...user,
                 password: securePassword,
                 enrolled: 0,
@@ -59,6 +60,39 @@ async function run() {
             const result = await usersCollection.insertOne(userInfo);
 
             res.send(result);
+        })
+
+
+        //Login
+        app.post('/login', async (req, res) => {
+            const { email, password } = req.body;
+
+            const query = {
+                email: email
+            };
+
+            const user = await usersCollection.findOne(query);
+
+
+            if (user) {
+                const isPasswordValid = await bcrypt.compare(password, user.password);
+                if (isPasswordValid) {
+                    console.log('User exists:', user);
+
+                    const token = jwt.sign({ email: user.email }, 'SECRET_KEY', { expiresIn: '1h' });
+                    return res.json({ token, user: {...user, password: ''}, password: true });
+
+
+                    // return res.send({ user: true, pin: true, type: user.type });
+                } else {
+                    console.log('Invalid pass');
+                    return res.send({ user: true, password: false });
+                }
+            } else {
+                console.log('User does not exist');
+                return res.send({ user: false });
+            }
+
         })
 
 
