@@ -33,13 +33,14 @@ async function run() {
 
         const coursesCollection = client.db("Alemeno").collection("courses");
         const usersCollection = client.db("Alemeno").collection("users");
+        const ordersCollection = client.db("Alemeno").collection("orders");
 
 
 
         //Register
         app.post('/register', async (req, res) => {
             const user = req.body;
-            console.log('user = ', user);
+            // console.log('user = ', user);
 
             // insert email if User does not exist
             const query = { email: user.email };
@@ -80,7 +81,7 @@ async function run() {
                     console.log('User exists:', user);
 
                     const token = jwt.sign({ email: user.email }, 'SECRET_KEY', { expiresIn: '1h' });
-                    return res.json({ token, user: {...user, password: ''}, password: true });
+                    return res.json({ token, user: { ...user, password: '' }, password: true });
 
 
                     // return res.send({ user: true, pin: true, type: user.type });
@@ -124,6 +125,30 @@ async function run() {
             const courseDetail = await coursesCollection.findOne({ _id: new ObjectId(id) });
 
             res.send(courseDetail);
+        })
+
+
+
+        // Enroll Courses
+        app.put('/enroll', async (req, res) => {
+            const { email, id } = req.body;
+
+            const order = await ordersCollection.findOne({
+                userEmail: email,
+                orderedProductIds: id
+            });
+
+            if (order) {
+                return res.send({ result: false });
+            }
+
+            const result = await ordersCollection.updateOne(
+                { userEmail: email },
+                { $push: { orderedProductIds: id } },
+                { upsert: true }
+            );
+
+            res.send({ result: true });
         })
 
 
