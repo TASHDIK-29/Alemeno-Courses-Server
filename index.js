@@ -161,16 +161,21 @@ async function run() {
 
             const order = await ordersCollection.findOne({
                 userEmail: email,
-                orderedCourseIds: id
+                'orderedCourses.courseId': id
             });
 
             if (order) {
                 return res.send({ result: false });
             }
 
+            const newCourse = {
+                courseId: id,
+                state: 'on-going'
+            };
+
             const result = await ordersCollection.updateOne(
                 { userEmail: email },
-                { $push: { orderedCourseIds: id } },
+                { $push: { orderedCourses: newCourse } },
                 { upsert: true }
             );
 
@@ -187,11 +192,36 @@ async function run() {
                 return res.send([]);
             }
 
-            // Use the course IDs to find the products
-            const courseIds = order.orderedCourseIds.map(id => new ObjectId(id));
+            // Use the course IDs to find the courses
+            // const productIds = order.orderedProducts.map(op => new ObjectId(op.productId));
+            const courseIds = order.orderedCourses.map(i => new ObjectId(i.courseId));
             const courses = await coursesCollection.find({ _id: { $in: courseIds } }).toArray();
 
-            return res.send(courses);
+            // Combine product details with their respective state
+            const orderedCoursesWithDetails = order.orderedCourses.map(i => {
+                const course = courses.find(c => c._id.toString() === i.courseId);
+                return {
+                    ...course,
+                    state: i.state
+                };
+            });
+
+            return res.send(orderedCoursesWithDetails);
+        })
+
+
+        // Complete Course
+        app.patch('/courseComplete', async (req, res) => {
+            const { email, id } = req.body;
+            
+
+            // Update the state of the specific product within the user's order
+            const result = await ordersCollection.updateOne(
+                { userEmail: email, 'orderedCourses.courseId': id.toString() },
+                { $set: { 'orderedCourses.$.state': 'completed' } }
+            );
+
+            res.send(result)
         })
 
 
