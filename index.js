@@ -97,7 +97,33 @@ async function run() {
         })
 
 
+        // GET USER
+        app.get('/user/:email', async (req, res) => {
+            const email = req.params.email;
 
+            const user = await usersCollection.findOne({ email });
+
+            res.send(user);
+        })
+
+        // Update Profile Image
+        app.put('/users/image/:email', async (req, res) => {
+            const email = req.params.email;
+            const filter = { email: email };
+
+            const newImage = req.body;
+            console.log(newImage);
+
+            const updatedDoc = {
+                $set: {
+                    image: newImage.imageURL
+                }
+            }
+
+            const result = await usersCollection.updateOne(filter, updatedDoc, { upsert: true });
+
+            res.send(result);
+        })
 
 
 
@@ -135,7 +161,7 @@ async function run() {
 
             const order = await ordersCollection.findOne({
                 userEmail: email,
-                orderedProductIds: id
+                orderedCourseIds: id
             });
 
             if (order) {
@@ -144,11 +170,28 @@ async function run() {
 
             const result = await ordersCollection.updateOne(
                 { userEmail: email },
-                { $push: { orderedProductIds: id } },
+                { $push: { orderedCourseIds: id } },
                 { upsert: true }
             );
 
             res.send({ result: true });
+        })
+
+        app.get('/course/:email', async (req, res) => {
+            const email = req.params.email;
+
+            // Find the user's order document
+            const order = await ordersCollection.findOne({ userEmail: email });
+            if (!order) {
+                console.log('No orders found for this user.');
+                return res.send([]);
+            }
+
+            // Use the course IDs to find the products
+            const courseIds = order.orderedCourseIds.map(id => new ObjectId(id));
+            const courses = await coursesCollection.find({ _id: { $in: courseIds } }).toArray();
+
+            return res.send(courses);
         })
 
 
