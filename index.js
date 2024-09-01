@@ -213,7 +213,7 @@ async function run() {
         // Complete Course
         app.patch('/courseComplete', async (req, res) => {
             const { email, id } = req.body;
-            
+
 
             // Update the state of the specific product within the user's order
             const result = await ordersCollection.updateOne(
@@ -222,6 +222,20 @@ async function run() {
             );
 
             res.send(result)
+        })
+
+
+        // Like Functionality
+        app.patch('/course/like/:id', async (req, res) => {
+            const id = req.params.id;
+
+            const updatedCourse = await coursesCollection.findOneAndUpdate(
+                { _id: new ObjectId(id) }, // Find course by _id
+                { $inc: { likes: 1 } }, // Increment likes by 1
+                { returnDocument: 'after' } // Return the updated document
+            );
+
+            res.send(updatedCourse.value)
         })
 
 
