@@ -179,6 +179,11 @@ async function run() {
                 { upsert: true }
             );
 
+            const updatedUserEnrollCount = await usersCollection.findOneAndUpdate(
+                { email },
+                { $inc: { enrolled: 1 } }
+            );
+
             res.send({ result: true });
         })
 
